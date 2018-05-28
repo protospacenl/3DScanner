@@ -18,10 +18,12 @@ import time
 
 import PIL.Image
 import PIL.ImageTk
+
 from tkinter import messagebox as mb
 from tkinter import *
-
+from tkinter import ttk
 import tkinter as tk
+
 import numpy as np
 import cv2
 import urllib
@@ -52,7 +54,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # to receive data.
 sock.settimeout(1)
 
-connection_list = []
+connection_list = ["no camera selected"]
 
 # Set the time-to-live for messages to 1 so they do not go past the
 # local network segment.
@@ -98,7 +100,6 @@ def counter():
 
 def process_data(command):
     global connection_number
-    global connection_list
     photo_number = -1
     current_photo = 0
     data_flag = 0
@@ -124,8 +125,8 @@ def process_data(command):
                     
                 if command == "connect":
                     connection_number += 1
-                    connection_list.append(connection_number)
-                    connection_list[connection_number] = str(server)[2:16]
+                    connection_list.append(str(server)[2:16])
+                    preview_dropdwn.set_menu(*connection_list)
 
             except socket.timeout:
                 if not connection_list and command == "connect":
@@ -154,7 +155,9 @@ def connection_check():
 def connect():
     sock.settimeout(1)
     global connection_number
+    global connection_list
     connection_number = -1
+    connection_list = ["no camera selected"]
     process_data("connect")
     tk.Label(window, text="{0} camera(s) connected".format(connection_number + 1)).grid(column=1, row=7, sticky=W)
     
@@ -258,7 +261,7 @@ def preview():
     global preview_flag
     if not connection_check():
         return 0
-    if p_menu.get() == preview_select[0]:
+    if p_menu.get() == connection_list[0]:
         print("No camera selected, please select a camera")
         return 404
     
@@ -296,12 +299,6 @@ commands = {0 : photo,
             5 : kill,
             6 : preview,}
 
-preview_select = ["no camera",
-                  "192.168.178.20",
-                  "192.168.178.21",
-                  "192.168.178.22",
-                  "192.168.178.27",]
-
 def button(command_number):
     global current_thread
     global preview_flag
@@ -338,7 +335,7 @@ delay   = tk.StringVar()
 folder  = tk.StringVar()
 
 p_menu  = tk.StringVar()
-p_menu.set(preview_select[0])
+#p_menu.set(connection_list[0])
 
 createEntry("Amount", 1, 6,  amount)
 createEntry("Delay",  2, 6,  delay )
@@ -356,8 +353,8 @@ createLabel("max. 50", 110, 25)
 createLabel("max. 5s", 110, 45)
 downloadpro_label = createLabel("", 67, 70)
 
-preview_dropdwn = tk.OptionMenu(window, p_menu, *preview_select)
-preview_dropdwn.place(x=67, y=216)
+preview_dropdwn = ttk.OptionMenu(window, p_menu, connection_list[0], *connection_list)
+preview_dropdwn.place(x=67, y=220)
 
 current_thread = threading.Thread(target=commands[4])
 current_thread.start()
