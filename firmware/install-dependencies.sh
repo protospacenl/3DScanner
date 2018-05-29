@@ -3,4 +3,4 @@
 sudo apt-get install -y python-setuptools python-pip
 sudo apt-get install -y realvnc-vnc-server
 
-pip install -r client/requirements.txt
+sudo pip install -r client/requirements.txt
