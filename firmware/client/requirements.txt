@@ -1,0 +1,3 @@
+picamera
+RPi.GPIO 
+
