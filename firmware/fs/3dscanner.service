@@ -1,0 +1,13 @@
+[Unit]
+Description=3D scanner client
+
+[Service]
+ExecStart=/home/pi/3DScanner/firmware/client/Client.py
+Restart=always
+RestartSec=1
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=3DScanner
+
+[Install]
+WantedBy=multi-user.target
