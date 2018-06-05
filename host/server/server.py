@@ -3,6 +3,7 @@
 #E99 : Parameters out of range
 #E50 : No data available
 #E2  : Function aborted (user)
+
 import threading
 import logging
 import socket
@@ -31,10 +32,10 @@ import urllib.request
 from http import server
 import socketserver
 
-client_path = r"C:\Users\Public\PS-3D-scanner\Client.py"
-reload_path = r"C:\Users\Public\PS-3D-scanner\Reload.py"
-
+client_path = r"C:\Users\Public\GitHub\3DScanner\firmware\client\Client.py"
+reload_path = r"C:\Users\Public\GitHub\3DScanner\firmware\client\Reload.py"
 multicast_group = ('224.0.0.10', 10000)
+master_ip = ('192.168.178.20', 10000)
 
 download_flag = 1
 preview_flag = 0
@@ -43,9 +44,6 @@ current_thread = 0
 
 ts = time.time()
 st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
-
-# RE float checker
-float_check = re.compile('\d+(\.\d+)?')
 
 # Create the datagram socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -138,7 +136,7 @@ def process_data(command):
                         return(50)
                 print ('%s finished succesfully!' %command)
                 if command[0:5] == "photo":
-                    sent = sock.sendto(str.encode("light"), multicast_group)
+                    sent = sock.sendto(str.encode("light"), master_ip)
                 break
             else:
                 print (data.decode() + str(server))
@@ -153,9 +151,9 @@ def connection_check():
     return (1)
 
 def connect():
-    sock.settimeout(1)
     global connection_number
     global connection_list
+    sock.settimeout(1)
     connection_number = -1
     connection_list = ["no camera selected"]
     process_data("connect")
@@ -166,8 +164,9 @@ def connect():
     return (404)
 
 def photo():
-    sock.settimeout(6)
     global connection_list
+    sock.settimeout(6)
+    float_check = re.compile('\d+(\.\d+)?')
     
     if connection_check() == 1:
         par1 = amount.get()
