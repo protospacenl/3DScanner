@@ -39,11 +39,7 @@ master_ip = ('192.168.178.20', 10000)
 
 download_flag = 1
 preview_flag = 0
-connection_number = -1
 current_thread = 0
-
-ts = time.time()
-st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
 
 # Create the datagram socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -97,8 +93,7 @@ def counter():
     return(1)
 
 def process_data(command):
-    global connection_number
-    photo_number = -1
+    photo_number = 0
     current_photo = 0
     data_flag = 0
     
@@ -115,9 +110,9 @@ def process_data(command):
                 data_flag = 1
                 photo_number += 1
                 
-                if command[0:5] == "photo" and photo_number == connection_number:
+                if command[0:5] == "photo" and photo_number == len(connection_list):
                     current_photo += 1
-                    photo_number = -1
+                    photo_number = 0
                     sock.sendto(str.encode(str(current_photo)), multicast_group)
                     tk.Label(window, text="{0} photo(s) done".format(current_photo)).grid(column=1, row=0, sticky=W)     
                     
@@ -126,8 +121,7 @@ def process_data(command):
                     ip = str(server)[2:16]
                     if not ip in connection_list:
                         connection_list.append(ip)
-                        connection_number += 1
-                    preview_dropdwn.set_menu("no camera connected", *connection_list)
+                    preview_dropdwn.set_menu("no camera selected", *connection_list)
 
             except socket.timeout:
                 if not connection_list and command == "connect":
@@ -154,19 +148,18 @@ def connection_check():
     return (1)
 
 def connect():
-    global connection_number
+    global connection_list
+    
     sock.settimeout(1)
-    connection_number = -1
     connection_list = []
     process_data("connect")
-    tk.Label(window, text="{0} camera(s) connected".format(connection_number + 1)).grid(column=1, row=7, sticky=W)
+    tk.Label(window, text="{0} camera(s) connected".format(len(connection_list))).grid(column=1, row=7, sticky=W)
     
     if connection_check() == 1:
         return (1)
     return (404)
 
 def photo():
-    global connection_list
     sock.settimeout(6)
     float_check = re.compile('\d+(\.\d+)?')
     
@@ -189,22 +182,13 @@ def photo():
     return (404)
 
 def download():
-    global ts
-    global st
-    global connection_number
-    global connection_list
     global download_flag
-    
     download_flag = 0
-    
     counter_thread = threading.Thread(target=counter)
     counter_thread.start()
-    
     if connection_check() == 1:
-        
         download_message = "Downloading photos"
         print(download_message)
-        
         na = folder.get()
         if not os.path.exists("c:\Temp\_pifotos\%s" %na):
             os.system ('mkdir c:\Temp\_pifotos\%s' %na)
@@ -214,29 +198,23 @@ def download():
                 print("Download aborted")
                 download_flag = 1
                 return(2)
-        for x in range (0, connection_number+1):
+        for x in range (0, len(connection_list)):
             cmd = 'pscp.exe -pw protoscan1 pi@{0}:/opt/3dscanner/photos/*.jpg c:\Temp\_pifotos\{1}\\'.format (connection_list[x], na)
-            print(cmd)
             os.system(cmd)
-        
         print("download complete!")
         download_flag = 1
         return (1)
     return (404)
    
 def sync():
-    global st
-    global connection_number
-    global connection_list
     
     if connection_check() == 1:
     
-        for x in range (0, connection_number+1):
+        for x in range (0, len(connection_list)):
             os.system(r'pscp.exe -pw protoscan1 {0} pi@{1}:/home/pi'.format (client_path, connection_list[x]))
             os.system(r'pscp.exe -pw protoscan1 {0} pi@{1}:/home/pi'.format (reload_path, connection_list[x]))
         print("sync complete!")
         reload()
-        tk.Label(window, text="Last synced : {0}".format(st)).grid(column=1, row=5)
         
         return (1)
     return (404)
