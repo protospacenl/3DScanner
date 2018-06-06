@@ -29,7 +29,7 @@ def clear():
     data = "0"
     command = "0" 
 
-dir = 'Desktop/photos'
+PHOTODIR = '/opt/3dscanner/photos'
 
 multicast_group = '224.0.0.10'
 server_address = ('', 10000)
@@ -180,9 +180,9 @@ while True:
         photo_flag = 0
         photo_number = 0
         photo_string = "0"
-        if os.path.exists(dir):
-            os.system("sudo rm -rf %s" %dir)
-        os.makedirs(dir)
+        if os.path.exists(PHOTODIR):
+            os.system("sudo rm -rf %s" %PHOTODIR)
+        os.makedirs(PHOTODIR)
         clear()
             
         #Turn on lighting
@@ -207,7 +207,7 @@ while True:
                 photo_string, address = sock.recvfrom(1024)
                 photo_flag = int(photo_string)
                 
-            camera.capture('/home/pi/%s/%s_%d.jpg' % (dir, get_ip_address('eth0'), x+1))
+            camera.capture('%s/%s_%d.jpg' % (PHOTODIR, get_ip_address('eth0'), x+1))
             sock.sendto("Photo: " + str(x+1), address)
             photo_number += 1
             time.sleep(float(par2)-(cameradelay))
@@ -226,7 +226,7 @@ while True:
     elif command == 'reload':
         sock.sendto("Acknowledge " + command, address)
         sock.close()
-        os.system("sudo python Reload.py")
+        sys.exit(1)
         
     elif command == 'kill':
         sock.sendto("Acknowledge " + command, address)

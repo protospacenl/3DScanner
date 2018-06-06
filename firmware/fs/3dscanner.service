@@ -4,7 +4,7 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=/home/pi/3DScanner/firmware/client/Client.py
+ExecStart=/usr/bin/python /home/pi/3DScanner/firmware/client/Client.py
 Restart=always
 RestartSec=1
 StandardOutput=syslog
