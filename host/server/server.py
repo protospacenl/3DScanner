@@ -52,7 +52,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # to receive data.
 sock.settimeout(1)
 
-connection_list = ["no camera selected"]
+connection_list = []
 
 # Set the time-to-live for messages to 1 so they do not go past the
 # local network segment.
@@ -122,9 +122,12 @@ def process_data(command):
                     tk.Label(window, text="{0} photo(s) done".format(current_photo)).grid(column=1, row=0, sticky=W)     
                     
                 if command == "connect":
-                    connection_number += 1
-                    connection_list.append(str(server)[2:16])
-                    preview_dropdwn.set_menu(*connection_list)
+                    
+                    ip = str(server)[2:16]
+                    if not ip in connection_list:
+                        connection_list.append(ip)
+                        connection_number += 1
+                    preview_dropdwn.set_menu("no camera connected", *connection_list)
 
             except socket.timeout:
                 if not connection_list and command == "connect":
@@ -152,10 +155,9 @@ def connection_check():
 
 def connect():
     global connection_number
-    global connection_list
     sock.settimeout(1)
     connection_number = -1
-    connection_list = ["no camera selected"]
+    connection_list = []
     process_data("connect")
     tk.Label(window, text="{0} camera(s) connected".format(connection_number + 1)).grid(column=1, row=7, sticky=W)
     
@@ -213,7 +215,9 @@ def download():
                 download_flag = 1
                 return(2)
         for x in range (0, connection_number+1):
-            os.system('pscp.exe -pw protoscan1 pi@{0}:/home/pi/Desktop/photos/*.jpg c:\Temp\_pifotos\{1}\\'.format (connection_list[x], na))
+            cmd = 'pscp.exe -pw protoscan1 pi@{0}:/opt/3dscanner/photos/*.jpg c:\Temp\_pifotos\{1}\\'.format (connection_list[x], na)
+            print(cmd)
+            os.system(cmd)
         
         print("download complete!")
         download_flag = 1
@@ -260,9 +264,6 @@ def preview():
     global preview_flag
     if not connection_check():
         return 0
-    if p_menu.get() == connection_list[0]:
-        print("No camera selected, please select a camera")
-        return 404
     
     process_data("preview")
     preview_button.config(text="Stop", bg="red", command = lambda: button(7))
@@ -352,7 +353,7 @@ createLabel("max. 50", 110, 25)
 createLabel("max. 5s", 110, 45)
 downloadpro_label = createLabel("", 67, 70)
 
-preview_dropdwn = ttk.OptionMenu(window, p_menu, connection_list[0], *connection_list)
+preview_dropdwn = ttk.OptionMenu(window, p_menu, "no camera connected", *connection_list)
 preview_dropdwn.place(x=67, y=220)
 
 current_thread = threading.Thread(target=commands[4])
