@@ -226,7 +226,7 @@ while True:
     elif command == 'reload':
         sock.sendto("Acknowledge " + command, address)
         sock.close()
-        os.system("sudo python Reload.py")
+        sys.exit(1)
         
     elif command == 'kill':
         sock.sendto("Acknowledge " + command, address)
