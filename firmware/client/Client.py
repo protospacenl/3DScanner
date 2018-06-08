@@ -205,6 +205,8 @@ while True:
             
             while(photo_number > photo_flag):
                 photo_string, address = sock.recvfrom(1024)
+                #if photo_string == "stop_photo"
+                    #return 0
                 photo_flag = int(photo_string)
                 
             camera.capture('%s/%s_%d.jpg' % (PHOTODIR, get_ip_address('eth0'), x+1))

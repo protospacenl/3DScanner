@@ -132,7 +132,8 @@ def process_data(command):
                         return 50
                 print ('%s finished succesfully!' %command)
                 if command[0:5] == "photo":
-                    sent = sock.sendto(str.encode("light"), master_ip)
+                    #sock.sendto(str.encode("stop_photo"), multicast_group)
+                    sock.sendto(str.encode("light"), master_ip)
                 break
             else:
                 print (data.decode() + str(server))
