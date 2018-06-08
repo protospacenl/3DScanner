@@ -33,7 +33,6 @@ from http import server
 import socketserver
 
 client_path = r"C:\Users\Public\GitHub\3DScanner\firmware\client\Client.py"
-reload_path = r"C:\Users\Public\GitHub\3DScanner\firmware\client\Reload.py"
 multicast_group = ('224.0.0.10', 10000)
 master_ip = ('192.168.178.20', 10000)
 
@@ -90,7 +89,7 @@ def counter():
         time.sleep(.25)
         
     downloadpro_label.config(text = "Download complete!")  
-    return(1)
+    return 1
 
 def process_data(command):
     photo_number = 0
@@ -126,11 +125,11 @@ def process_data(command):
             except socket.timeout:
                 if not connection_list and command == "connect":
                     print("Connection failed, please repeat connect function")
-                    return(404)
+                    return 404
                 if data_flag == 0:
                     if command != "preview" and command != "stop_preview":
                         print("No data retrieved, please repeat connect function")
-                        return(50)
+                        return 50
                 print ('%s finished succesfully!' %command)
                 if command[0:5] == "photo":
                     sent = sock.sendto(str.encode("light"), master_ip)
@@ -139,13 +138,13 @@ def process_data(command):
                 print (data.decode() + str(server))
                 
     finally:
-        return (1)
+        return 1
     
 def connection_check():
     if not connection_list:
         print("Connection not yet established, please run connect function")
-        return (0)
-    return (1)
+        return 0
+    return 1
 
 def connect():
     global connection_list
@@ -156,8 +155,8 @@ def connect():
     tk.Label(window, text="{0} camera(s) connected".format(len(connection_list))).grid(column=1, row=7, sticky=W)
     
     if connection_check() == 1:
-        return (1)
-    return (404)
+        return 1
+    return 404
 
 def photo():
     sock.settimeout(6)
@@ -174,12 +173,12 @@ def photo():
 
                 # Look for responses from all recipients
                 process_data(message)
-                return (1)
+                return 1
             print("Parameters out of range, max 50 photos at a 5 second delay.")
-            return(99)
+            return 99
         print("Wrong input, please enter numbers only.")
-        return(99)
-    return (404)
+        return 99
+    return 404
 
 def download():
     global download_flag
@@ -197,14 +196,14 @@ def download():
             if result == "no":
                 print("Download aborted")
                 download_flag = 1
-                return(2)
+                return 2
         for x in range (0, len(connection_list)):
             cmd = 'pscp.exe -pw protoscan1 pi@{0}:/opt/3dscanner/photos/*.jpg c:\Temp\_pifotos\{1}\\'.format (connection_list[x], na)
             os.system(cmd)
         print("download complete!")
         download_flag = 1
-        return (1)
-    return (404)
+        return 1
+    return 404
    
 def sync():
     
@@ -212,19 +211,18 @@ def sync():
     
         for x in range (0, len(connection_list)):
             os.system(r'pscp.exe -pw protoscan1 {0} pi@{1}:/home/pi'.format (client_path, connection_list[x]))
-            os.system(r'pscp.exe -pw protoscan1 {0} pi@{1}:/home/pi'.format (reload_path, connection_list[x]))
         print("sync complete!")
         reload()
         
-        return (1)
-    return (404)
+        return 1
+    return 404
     
 def reload():
     sock.settimeout(1)
     if connection_check() == 1:
         process_data("reload")
-        return (1)
-    return (404)
+        return 1
+    return 404
         
 def kill():
     sock.settimeout(1)
@@ -232,15 +230,19 @@ def kill():
         result = mb.askquestion("Kill program", "Are you sure you wish to kill the current script?", icon='warning')
         if result == "no":
             print("Kill aborted")
-            return(2)
+            return 2
         else:
             process_data("kill")
-            return (1)
-    return (404)
+            return 1
+    return 404
 
 def preview():
     global preview_flag
     if not connection_check():
+        return 0
+    
+    if p_menu.get() == "no camera selected":
+        print("No camera selected, please select a camera")
         return 0
     
     process_data("preview")
@@ -267,7 +269,7 @@ def preview():
             preview_flag = 0
             preview_image.configure(image='')
             preview_button.config(text="Preview", bg="white", command = lambda: button(6))
-            return
+            return 1
         
 commands = {0 : photo,
             1 : download,
