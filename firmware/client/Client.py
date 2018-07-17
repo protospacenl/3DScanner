@@ -34,34 +34,27 @@ PHOTODIR = '/opt/3dscanner/photos'
 multicast_group = '224.0.0.10'
 server_address = ('', 10000)
 
-# Create the socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Bind to the server address
 sock.bind(server_address)
 
-#Init GPIO
 ledpin = 7
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(ledpin, GPIO.OUT)
 GPIO.output(ledpin, True)
 
-# Tell the operating system to add the socket to the multicast group
-# on all interfaces.
 group = socket.inet_aton(multicast_group)
 mreq = struct.pack('4sL', group, socket.INADDR_ANY)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-# Receive/respond loop
-
 PAGE="""\
 <html>
 <head>
-<title>picamera MJPEG streaming demo</title>
+<title>picamera MJPEG streaming</title>
 </head>
 <body>
-<h1>PiCamera MJPEG Streaming Demo</h1>
+<h1>PiCamera MJPEG Streaming</h1>
 <img src="stream.mjpg" width="640" height="480" />
 </body>
 </html>

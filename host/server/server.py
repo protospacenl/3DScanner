@@ -40,17 +40,12 @@ download_flag = 1
 preview_flag = 0
 current_thread = 0
 
-# Create the datagram socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Set a timeout so the socket does not block indefinitely when trying
-# to receive data.
 sock.settimeout(1)
 
 connection_list = []
 
-# Set the time-to-live for messages to 1 so they do not go past the
-# local network segment.
 ttl = struct.pack('b', 1)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
 
@@ -58,9 +53,6 @@ window = tk.Tk()
 window.title("3D Scanner")
 window.geometry("575x300")
 
-
-#preview_border = tk.Label(window)
-#preview_border.place(x=225, y=25)
 preview_label  = tk.LabelFrame(window, text="Camera preview", width=335, height=265, labelanchor=N).place(x=220, y=10)
 preview_image  = tk.Label(window)
 preview_image.place(x=225, y=25)
@@ -117,7 +109,7 @@ def process_data(command):
                     
                 if command == "connect":
                     
-                    ip = str(server)[2:16]
+                    ip = str(server)[2:15]
                     if not ip in connection_list:
                         connection_list.append(ip)
                     preview_dropdwn.set_menu("no camera selected", *connection_list)
@@ -169,10 +161,7 @@ def photo():
         if (par1.isdigit() and (par2.isdigit() or float_check.match(par2))):
             if (int(par1) <= 50 and float(par2) <= 5):
                 message = ("photo" + " " + par1 + " " + par2)
-                # Send data to the multicast group
                 print ('sending "%s"' % message)
-
-                # Look for responses from all recipients
                 process_data(message)
                 return 1
             print("Parameters out of range, max 50 photos at a 5 second delay.")
@@ -251,19 +240,18 @@ def preview():
     print("{0} preview, press stop to cancel".format (p_menu.get()))
     urllib.request.urlcleanup()
     stream=urllib.request.urlopen("http://{0}:8000/stream.mjpg".format (p_menu.get()))
-    streamBytes= bytes()
+    stream_bytes= bytes()
     while True:
-        streamBytes+=stream.read(1024)
-        a = streamBytes.find(b'\xff\xd8')
-        b = streamBytes.find(b'\xff\xd9')
+        stream_bytes+=stream.read(1024)
+        a = stream_bytes.find(b'\xff\xd8')
+        b = stream_bytes.find(b'\xff\xd9')
         if a!=-1 and b!=-1:
-            jpg = streamBytes[a:b+2]
-            streamBytes= streamBytes[b+2:]
+            jpg = stream_bytes[a:b+2]
+            stream_bytes= stream_bytes[b+2:]
             i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8),cv2.IMREAD_COLOR)            
             tki = PIL.ImageTk.PhotoImage(PIL.Image.fromarray(cv2.cvtColor(i, cv2.COLOR_BGR2RGB)))
             preview_image.configure(image=tki)                
-            preview_image._backbuffer_ = tki  #avoid flicker caused by premature gc
-            #cv2.imshow('i',i)
+            preview_image._backbuffer_ = tki
         if cv2.waitKey(1) ==27:
             exit(0)
         if preview_flag == 1:
