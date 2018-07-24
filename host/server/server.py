@@ -200,7 +200,7 @@ def sync():
     if connection_check() == 1:
     
         for x in range (0, len(connection_list)):
-            os.system(r'pscp.exe -pw protoscan1 {0} pi@{1}:/home/pi'.format (client_path, connection_list[x]))
+            os.system(r'pscp.exe -pw protoscan1 {0} pi@{1}:/home/pi/3DScanner/firmware/client'.format (client_path, connection_list[x]))
         print("sync complete!")
         reload()
         
