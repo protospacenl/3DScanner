@@ -145,6 +145,13 @@ def streaming_start():
         server.handle_request()
     except Exception as e:
         print("caught: %s" % str(e))
+        
+#Ensures pi gets proper IP address even if router boot-up was slower than pi boot-up     
+while(get_ip_address('eth0')[0:7] != '192.168'):
+    #print(get_ip_address('eth0')[0:7])
+    os.system('sudo ifconfig eth0 up')
+
+current_ip = get_ip_address('eth0')
 
 while True:
     global stream_flag
@@ -224,7 +231,7 @@ while True:
             with open('timingtest.txt', 'a') as file:
                 file.write('Before photo: ' + str(current_milli_time) + '\n')
                 
-            camera.capture('%s/%s_%d.jpg' % (PHOTODIR, get_ip_address('eth0'), x+1))
+            camera.capture('%s/%s_%d.jpg' % (PHOTODIR, current_ip, x+1))
             sock.sendto("Photo: " + str(x+1), address)
             
             #Timing test
