@@ -40,11 +40,15 @@ download_flag = 1
 preview_flag = 0
 current_thread = 0
 
+selected_camera = 'no camera selected'
+selected_camera_number = 0
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 sock.settimeout(1)
 
 connection_list = []
+camera_list = []
 
 ttl = struct.pack('b', 1)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
@@ -90,7 +94,7 @@ def process_data(command):
     
     try:
         if command == "preview" or command == "stop_preview":
-            preview_ip = (p_menu.get(), 10000)
+            preview_ip = (connection_list[selected_camera_number], 10000)
             sock.sendto(str.encode(command), preview_ip) 
         else:
             sock.sendto(str.encode(command), multicast_group)
@@ -107,17 +111,22 @@ def process_data(command):
                     sock.sendto(str.encode(str(current_photo)), multicast_group)
                     tk.Label(window, text="{0} photo(s) done".format(current_photo)).grid(column=1, row=0, sticky=W)     
                     
-                if command == "connect":
-                    
+                if command == "connect":  
                     ip = str(server)[2:15]
+                    cam_nr = 'Camera ' + ip[11:13]
                     if not ip in connection_list:
                         connection_list.append(ip)
-                    preview_dropdwn.set_menu("no camera selected", *connection_list)
-
+                        camera_list.append(cam_nr)
+                        
             except socket.timeout:
-                if not connection_list and command == "connect":
-                    print("Connection failed, please repeat connect function")
-                    return 404
+                if command == "connect":
+                    if not connection_list:
+                        print("Connection failed, please repeat connect function")
+                        return 404
+                    connection_list.sort()
+                    camera_list.sort()
+                    preview_dropdwn.set_menu("no camera selected", *camera_list)
+                    
                 if data_flag == 0:
                     if command != "preview" and command != "stop_preview":
                         print("No data retrieved, please repeat connect function")
@@ -141,9 +150,11 @@ def connection_check():
 
 def connect():
     global connection_list
+    global camera_list
     
     sock.settimeout(1)
-    connection_list = []
+    del connection_list[:]
+    del camera_list[:]
     process_data("connect")
     tk.Label(window, text="{0} camera(s) connected".format(len(connection_list))).grid(column=1, row=7, sticky=W)
     
@@ -228,18 +239,23 @@ def kill():
 
 def preview():
     global preview_flag
+    global selected_camera
+    global selected_camera_number
     if not connection_check():
         return 0
     
-    if p_menu.get() == "no camera selected":
+    selected_camera = p_menu.get()
+    selected_camera_number = int(selected_camera[7:9])
+    
+    if selected_camera == "no camera selected":
         print("No camera selected, please select a camera")
         return 0
     
     process_data("preview")
     preview_button.config(text="Stop", bg="red", command = lambda: button(7))
-    print("{0} preview, press stop to cancel".format (p_menu.get()))
+    print("{0} preview, press stop to cancel".format (selected_camera))
     urllib.request.urlcleanup()
-    stream=urllib.request.urlopen("http://{0}:8000/stream.mjpg".format (p_menu.get()))
+    stream=urllib.request.urlopen("http://{0}:8000/stream.mjpg".format (connection_list[selected_camera_number]))
     stream_bytes= bytes()
     while True:
         stream_bytes+=stream.read(1024)
@@ -322,7 +338,7 @@ createLabel("max. 50", 110, 25)
 createLabel("max. 5s", 110, 45)
 downloadpro_label = createLabel("", 67, 70)
 
-preview_dropdwn = ttk.OptionMenu(window, p_menu, "no camera connected", *connection_list)
+preview_dropdwn = ttk.OptionMenu(window, p_menu, "no camera connected", *camera_list)
 preview_dropdwn.place(x=67, y=220)
 
 current_thread = threading.Thread(target=commands[4])

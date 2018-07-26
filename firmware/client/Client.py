@@ -176,11 +176,6 @@ while True:
 
 
     if command == 'photo':
-        
-        #Timing test
-        current_milli_time = int(round(time.time() * 1000))
-        with open('timingtest.txt', 'a') as file:
-            file.write('Function start: ' + str(current_milli_time) + '\n')
             
         print ('received photo')
         photo_flag = 0
@@ -194,13 +189,7 @@ while True:
         #Turn on lighting
         GPIO.output(ledpin, False)
         
-        #Camera settings
-        
-        #Timing test
-        current_milli_time = int(round(time.time() * 1000))
-        with open('timingtest.txt', 'a') as file:
-            file.write('Camera init: ' + str(current_milli_time) + '\n')
-            
+        #Camera settings            
         camera = picamera.PiCamera()
         camera.resolution = (2592, 1944)
         camera.framerate = 30
@@ -214,11 +203,6 @@ while True:
 
         #Make photos
         for x in range(int(par1)):
-        
-        #Timing test
-            current_milli_time = int(round(time.time() * 1000))
-            with open('timingtest.txt', 'a') as file:
-                file.write('Loop start: ' + str(current_milli_time) + '\n')
             
             while(photo_number > photo_flag):
                 photo_string, address = sock.recvfrom(1024)
@@ -227,17 +211,17 @@ while True:
                 photo_flag = int(photo_string)
                 
             #Timing test
-            current_milli_time = int(round(time.time() * 1000))
-            with open('timingtest.txt', 'a') as file:
-                file.write('Before photo: ' + str(current_milli_time) + '\n')
+            #current_milli_time = int(round(time.time() * 1000))
+            #with open('timingtest.txt', 'a') as file:
+                #file.write('Before photo: ' + str(current_milli_time) + '\n')
                 
             camera.capture('%s/%s_%d.jpg' % (PHOTODIR, current_ip, x+1))
             sock.sendto("Photo: " + str(x+1), address)
             
             #Timing test
-            current_milli_time = int(round(time.time() * 1000))
-            with open('timingtest.txt', 'a') as file:
-                file.write('After photo: ' + str(current_milli_time) + '\n')
+            #current_milli_time = int(round(time.time() * 1000))
+            #with open('timingtest.txt', 'a') as file:
+                #file.write('After photo: ' + str(current_milli_time) + '\n')
                 
             photo_number += 1
             #time.sleep(float(par2)-(cameradelay))
