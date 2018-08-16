@@ -245,7 +245,7 @@ def preview():
         return 0
     
     selected_camera = p_menu.get()
-    selected_camera_number = int(selected_camera[7:9])
+    selected_camera_number = int(selected_camera[7:9]) - 1
     
     if selected_camera == "no camera selected":
         print("No camera selected, please select a camera")
