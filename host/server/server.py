@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 #Error list:
 #E404: Connection not established
 #E99 : Parameters out of range
