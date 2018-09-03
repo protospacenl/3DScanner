@@ -223,7 +223,11 @@ def download():
             args = (connection_list[x], '/opt/3dscanner/photos/*.jpg', 'c:\Temp\_pifotos\{0}\\'.format(na))
             download_map.append(args)
         download_result = download_pool.starmap(download_photos, download_map)
-        print("download complete!\n{0}".format(download_result))
+        
+        for status, ip in download_result:
+            if not status == 0:
+                print("Download failed for {0}: {1}".format(ip, status))
+        print("download done.")
         download_flag = 1
         return 1
     return 404
