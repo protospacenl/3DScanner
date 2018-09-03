@@ -6,6 +6,8 @@
 #E50 : No data available
 #E2  : Function aborted (user)
 
+from multiprocessing.dummy import Pool
+from subprocess import check_output, call
 import threading
 import logging
 import socket
@@ -62,6 +64,20 @@ window.geometry("575x300")
 preview_label  = tk.LabelFrame(window, text="Camera preview", width=335, height=265, labelanchor=N).place(x=220, y=10)
 preview_image  = tk.Label(window)
 preview_image.place(x=225, y=25)
+
+def download_photos(ip, remote_path, local_path):
+    try:
+        print('downloading: pi@{0}:{1} -> {2}'.format(ip, remote_path, local_path))
+        sys.stdout.flush()
+        
+        output = call(['pscp.exe', '-pw', 'protoscan1', 
+                                   'pi@{0}:{1}'.format(ip, remote_path),
+                                   local_path]), ip
+        return output
+    except Exception as e:
+        print(e)
+        return ip, e
+
 
 def counter():
     global download_flag
@@ -200,10 +216,14 @@ def download():
                 print("Download aborted")
                 download_flag = 1
                 return 2
+
+        download_pool = Pool(len(connection_list))
+        download_map = []
         for x in range (0, len(connection_list)):
-            cmd = 'pscp.exe -pw protoscan1 pi@{0}:/opt/3dscanner/photos/*.jpg c:\Temp\_pifotos\{1}\\'.format (connection_list[x], na)
-            os.system(cmd)
-        print("download complete!")
+            args = (connection_list[x], '/opt/3dscanner/photos/*.jpg', 'c:\Temp\_pifotos\{0}\\'.format(na))
+            download_map.append(args)
+        download_result = download_pool.starmap(download_photos, download_map)
+        print("download complete!\n{0}".format(download_result))
         download_flag = 1
         return 1
     return 404
