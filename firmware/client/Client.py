@@ -17,6 +17,11 @@ import threading
 from threading import Condition
 import BaseHTTPServer
 
+LED_GREEN=0
+LED_RED=1
+LED_ON=1
+LED_OFF=0
+
 def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     return socket.inet_ntoa(fcntl.ioctl(
@@ -28,6 +33,12 @@ def get_ip_address(ifname):
 def clear():
     data = "0"
     command = "0" 
+
+def set_led_trigger(led, trigger):
+    os.system("echo %s | sudo tee /sys/class/leds/led%d/trigger" % (trigger, led))
+
+def set_led_state(led, state):
+    os.system("echo %d | sudo tee /sys/class/leds/led%d/brightness" % (1 if state else 0, led))
 
 PHOTODIR = '/opt/3dscanner/photos'
 
@@ -153,6 +164,9 @@ while(get_ip_address('eth0')[0:7] != '192.168'):
 
 current_ip = get_ip_address('eth0')
 
+set_led_trigger(LED_GREEN, "gpio")
+set_led_trigger(LED_RED, "gpio")
+
 while True:
     global stream_flag
     
@@ -175,9 +189,11 @@ while True:
 # Check Message Data
 
 
-    if command == 'photo':
-            
+    if command == 'photo':    
         print ('received photo')
+
+        set_led_state(LED_RED, LED_ON)
+
         photo_flag = 0
         photo_number = 0
         photo_string = "0"
@@ -227,6 +243,7 @@ while True:
             #time.sleep(float(par2)-(cameradelay))
             
         camera.close()
+        set_led_state(LED_RED, LED_OFF)
         
     elif command == 'light':
         #Turn off lighting
@@ -248,9 +265,11 @@ while True:
         
     elif command == 'connect':
         print("Connect")
+        set_led_state(LED_GREEN, LED_ON)
         sock.sendto("Acknowledge " + command, address)
         
     elif command == 'preview':
+        set_led_trigger(LED_RED, "heartbeat")
         with picamera.PiCamera(resolution='320x240', framerate=24) as camera:
             stream_flag = 1
             camera.start_recording(output, format='mjpeg')
@@ -259,6 +278,7 @@ while True:
                 data, address = sock.recvfrom(1024)
             camera.stop_recording()
             camera.close()
+        set_led_trigger(LED_RED, "gpio")
                 
     else:
         if not command.isdigit():
