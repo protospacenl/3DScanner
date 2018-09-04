@@ -2,7 +2,7 @@
 
 ID=$1
 IP_BASE=192.168.2
-IP_END=150
+IP_END=100
 
 usage() {
 	echo "Usage: ${0} [id]"
