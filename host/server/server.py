@@ -70,7 +70,7 @@ def download_photos(ip, remote_path, local_path):
         print('downloading: pi@{0}:{1} -> {2}'.format(ip, remote_path, local_path))
         sys.stdout.flush()
         
-        output = call(['pscp.exe', '-pw', 'protoscan1', 
+        output = call(['pscp.exe', '-r', '-pw', 'protoscan1', 
                                    'pi@{0}:{1}'.format(ip, remote_path),
                                    local_path]), ip
         return output
@@ -220,7 +220,7 @@ def download():
         download_pool = Pool(len(connection_list))
         download_map = []
         for x in range (0, len(connection_list)):
-            args = (connection_list[x], '/opt/3dscanner/photos/*.jpg', 'c:\Temp\_pifotos\{0}\\'.format(na))
+            args = (connection_list[x], '/opt/3dscanner/photos/*', 'c:\Temp\_pifotos\{0}\\'.format(na))
             download_map.append(args)
         download_result = download_pool.starmap(download_photos, download_map)
         
