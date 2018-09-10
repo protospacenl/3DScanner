@@ -198,8 +198,9 @@ while True:
         photo_number = 0
         photo_string = "0"
         if os.path.exists(PHOTODIR):
-            os.system("sudo rm -rf %s" %PHOTODIR)
-        os.makedirs(PHOTODIR)
+            os.system("sudo rm -rf %s/*" %PHOTODIR)
+        else:
+            os.makedirs(PHOTODIR)
         clear()
             
         #Turn on lighting
@@ -219,26 +220,19 @@ while True:
 
         #Make photos
         for x in range(int(par1)):
-            
+            foto_num = x+1
+            foto_path = "%s/%d" % (PHOTODIR, foto_num)
+
             while(photo_number > photo_flag):
                 photo_string, address = sock.recvfrom(1024)
                 #if photo_string == "stop_photo"
                     #return 0
                 photo_flag = int(photo_string)
                 
-            #Timing test
-            #current_milli_time = int(round(time.time() * 1000))
-            #with open('timingtest.txt', 'a') as file:
-                #file.write('Before photo: ' + str(current_milli_time) + '\n')
-                
-            camera.capture('%s/%s_%d.jpg' % (PHOTODIR, current_ip, x+1))
-            sock.sendto("Photo: " + str(x+1), address)
+            os.makedirs(foto_path)
+            camera.capture('%s/%s_%d.jpg' % (foto_path, current_ip, foto_num))
+            sock.sendto("Photo: " + str(foto_num), address)
             
-            #Timing test
-            #current_milli_time = int(round(time.time() * 1000))
-            #with open('timingtest.txt', 'a') as file:
-                #file.write('After photo: ' + str(current_milli_time) + '\n')
-                
             photo_number += 1
             #time.sleep(float(par2)-(cameradelay))
             
