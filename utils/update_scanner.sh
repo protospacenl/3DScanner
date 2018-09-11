@@ -27,7 +27,8 @@ for i in $CAMERA; do
 	IP=${IP_BASE}.${NEW_END}
 	echo "Updating ${i} -> ${IP}"
 	
-	scp ${IDENTITY} ../firmware/client/Client.py pi@${IP}:3DScanner/firmware/client/
+	scp -r ${IDENTITY} ../firmware/client/* pi@${IP}:3DScanner/firmware/client/
+    scp -r ${IDENTITY} ../firmware/client/jozua.conf pi@${IP}:.jozua.conf
 	./identify_camera.sh ${IDENTITY} -c $i
 	
 done

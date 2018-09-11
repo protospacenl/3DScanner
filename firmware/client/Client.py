@@ -4,6 +4,7 @@ import socket
 import os
 import struct
 import fcntl
+import json
 import sys
 import picamera
 import time
@@ -17,10 +18,37 @@ import threading
 from threading import Condition
 import BaseHTTPServer
 
+CONFIG_FILE_NAME="jozua.conf"
+CONFIG_FILE_PATH=None
+
 LED_GREEN=0
 LED_RED=1
 LED_ON=1
 LED_OFF=0
+
+JozuaConfig = None
+
+CameraParameters = {    
+                        "id": 1,
+                        "resolution": { "width": 2592, "height": 1944 },
+                        "preview": { "width": 640, "height": 480 },
+                        "framerate": 30,
+                        "delay": 0.55,
+                        "iso": 200,
+                        "exposure_compensation": 0,
+                        "exposure_mode": "off",
+                        "shutter_speed": 9000,
+                        "brightness": 50,
+                        "sharpness": 0,
+                        "contrast": 0,
+                        "awb_mode": "off",
+                        "awb_gain": { "red": 1.5, "blue": 1.5 }
+                    }
+
+CaptureParameters = {
+    "path": '/opt/3dscanner/photos',
+    "bracketing": None
+}
 
 def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -40,7 +68,42 @@ def set_led_trigger(led, trigger):
 def set_led_state(led, state):
     os.system("echo %d | sudo tee /sys/class/leds/led%d/brightness" % (1 if state else 0, led))
 
-PHOTODIR = '/opt/3dscanner/photos'
+CONFIG_FILE_PATH = "./%s" % (CONFIG_FILE_NAME)
+
+if not os.path.exists(CONFIG_FILE_PATH):
+    CONFIG_FILE_PATH = "/home/pi/.%s" % (CONFIG_FILE_NAME)
+    if not os.path.exists(CONFIG_FILE_PATH):
+        CONFIG_FILE_PATH = "/etc/%s" % (CONFIG_FILE_NAME)
+        if not os.path.exists(CONFIG_FILE_PATH):
+            CONFIG_FILE_PATH = None
+
+if not CONFIG_FILE_PATH == None:
+    with open(CONFIG_FILE_PATH, 'r') as f:
+        JozuaConfig = json.load(f)
+
+if JozuaConfig:
+    if 'camera' in JozuaConfig:
+        cameraconfig = JozuaConfig['camera'][0]
+        CameraParameters['resolution'] = cameraconfig.get("resolution", { "width": 2592, "height": 1944 })
+        CameraParameters['preview'] = cameraconfig.get("preview", { "width": 640, "height": 480 })
+        CameraParameters['framerate'] =  cameraconfig.get("framerate", 30)
+        CameraParameters['delay'] = cameraconfig.get("delay", 0.55)
+        CameraParameters['iso'] = cameraconfig.get("iso", 200)
+        CameraParameters['exposure_compensation'] = cameraconfig.get("exposure_compensation", 0)
+        CameraParameters['exposure_mode'] = cameraconfig.get("exposure_mode", "off")
+        CameraParameters['shutter_speed'] = cameraconfig.get("shutter_speed", 9000)
+        CameraParameters['brightness'] = cameraconfig.get("brightness", 50)
+        CameraParameters['sharpness'] = cameraconfig.get("sharpness", 0)
+        CameraParameters['contrast'] = cameraconfig.get("contrast", 0)
+        CameraParameters['awb_mode'] = cameraconfig.get("awb_mode", "off")
+        CameraParameters['awb_gain'] = cameraconfig.get("awb_gain", { "red": 1.5, "blue": 1.5 })
+    if 'capture' in JozuaConfig:
+        captureconfig = JozuaConfig['capture']
+        CaptureParameters['path'] = captureconfig.get('path', '/opt/3dscanner/photos')
+        CaptureParameters['bracketing'] = captureconfig.get('bracketing', None)
+
+print "Camera config: %s" % (CameraParameters)
+print "Capture config: %s" % (CaptureParameters)
 
 multicast_group = '224.0.0.10'
 server_address = ('', 10000)
@@ -197,10 +260,10 @@ while True:
         photo_flag = 0
         photo_number = 0
         photo_string = "0"
-        if os.path.exists(PHOTODIR):
-            os.system("sudo rm -rf %s/*" %PHOTODIR)
+        if os.path.exists(CaptureParameters['path']):
+            os.system("sudo rm -rf %s/*" % (CaptureParameters['path']))
         else:
-            os.makedirs(PHOTODIR)
+            os.makedirs(CaptureParameters['path'])
         clear()
             
         #Turn on lighting
@@ -208,20 +271,23 @@ while True:
         
         #Camera settings            
         camera = picamera.PiCamera()
-        camera.resolution = (2592, 1944)
-        camera.framerate = 30
-        camera.brightness = 50
-        camera.awb_mode = 'off'
-        camera.awb_gains = (1.5,1.5)
-        camera.iso = 200
-        camera.exposure_mode = 'off'
-        camera.shutter_speed = 9000
-        cameradelay = 0.55
-
+        camera.resolution = (CameraParameters['resolution']['width'], CameraParameters['resolution']['height'])
+        camera.framerate = CameraParameters['framerate']
+        camera.brightness = CameraParameters['brightness']
+        camera.sharpness = CameraParameters['sharpness']
+        camera.contrast = CameraParameters['contrast']
+        camera.awb_mode = CameraParameters['awb_mode']
+        camera.awb_gains = (CameraParameters['awb_gain']['red'], CameraParameters['awb_gain']['blue'])
+        camera.iso = CameraParameters['iso']
+        camera.exposure_compensation = CameraParameters['exposure_compensation']
+        camera.exposure_mode = CameraParameters['exposure_mode']
+        camera.shutter_speed = CameraParameters['shutter_speed']
+        cameradelay = CameraParameters['delay']
+        
         #Make photos
         for x in range(int(par1)):
             foto_num = x+1
-            foto_path = "%s/%d" % (PHOTODIR, foto_num)
+            foto_path = "%s/%d" % (CaptureParameters['path'], foto_num)
 
             while(photo_number > photo_flag):
                 photo_string, address = sock.recvfrom(1024)
@@ -230,7 +296,22 @@ while True:
                 photo_flag = int(photo_string)
                 
             os.makedirs(foto_path)
-            camera.capture('%s/%s_%d.jpg' % (foto_path, current_ip, foto_num))
+
+            if CaptureParameters['bracketing'] and not CaptureParameters['bracketing']['mode'] == 'off':
+                vmin = CaptureParameters['bracketing']['min']
+                vmax = CaptureParameters['bracketing']['max']
+                vsteps = CaptureParameters['bracketing']['steps']
+                stepsize = 1
+
+                if vsteps >= 1:
+                    stepsize = (vmax-vmin) / vsteps
+
+                for i in range(0, vsteps+1):
+                    if CaptureParameters['bracketing']['mode'] == 'shutter':
+                        camera.shutter_speed = vmin + i * stepsize
+                    camera.capture('%s/%d_%d_%s.jpg' % (foto_path, i, foto_num, current_ip))
+            else:
+                camera.capture('%s/%d_%s.jpg' % (foto_path, foto_num, current_ip))
             sock.sendto("Photo: " + str(foto_num), address)
             
             photo_number += 1
@@ -265,6 +346,17 @@ while True:
     elif command == 'preview':
         set_led_trigger(LED_RED, "heartbeat")
         with picamera.PiCamera(resolution='640x480', framerate=24) as camera:
+            camera.resolution = (CameraParameters['preview']['width'], CameraParameters['preview']['height'])
+            camera.brightness = CameraParameters['brightness']
+            camera.sharpness = CameraParameters['sharpness']
+            camera.contrast = CameraParameters['contrast']
+            camera.awb_mode = CameraParameters['awb_mode']
+            camera.awb_gains = (CameraParameters['awb_gain']['red'], CameraParameters['awb_gain']['blue'])
+            camera.iso = CameraParameters['iso']
+            camera.exposure_compensation = CameraParameters['exposure_compensation']
+            camera.exposure_mode = CameraParameters['exposure_mode']
+            camera.shutter_speed = CameraParameters['shutter_speed']
+
             stream_flag = 1
             camera.start_recording(output, format='mjpeg')
             threading.Thread(target=streaming_start()).start()
