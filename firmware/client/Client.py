@@ -264,7 +264,7 @@ while True:
         
     elif command == 'preview':
         set_led_trigger(LED_RED, "heartbeat")
-        with picamera.PiCamera(resolution='320x240', framerate=24) as camera:
+        with picamera.PiCamera(resolution='640x480', framerate=24) as camera:
             stream_flag = 1
             camera.start_recording(output, format='mjpeg')
             threading.Thread(target=streaming_start()).start()

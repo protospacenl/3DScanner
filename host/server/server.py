@@ -59,9 +59,9 @@ sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
 
 window = tk.Tk()
 window.title("3D Scanner")
-window.geometry("575x300")
+window.geometry("895x540")
 
-preview_label  = tk.LabelFrame(window, text="Camera preview", width=335, height=265, labelanchor=N).place(x=220, y=10)
+preview_label  = tk.LabelFrame(window, text="Camera preview", width=655, height=505, labelanchor=N).place(x=220, y=10)
 preview_image  = tk.Label(window)
 preview_image.place(x=225, y=25)
 
