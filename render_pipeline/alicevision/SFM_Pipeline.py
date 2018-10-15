@@ -197,9 +197,9 @@ if __name__ == '__main__':
 
     if args.recursive:
         for path in sorted(imgPath.glob('**/')):
-        	if path.stem.lower() == 'recap':
-				print("Skipping recap path: {0}".format(path))
-				continue
+            if path.stem.lower() == 'recap':
+                print("Skipping recap path: {0}".format(path))
+                continue
             
             numImages = len(sorted(path.glob('*.jpg')))
             
