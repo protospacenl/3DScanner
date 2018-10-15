@@ -197,9 +197,14 @@ if __name__ == '__main__':
 
     if args.recursive:
         for path in sorted(imgPath.glob('**/')):
+        	if path.stem.lower() == 'recap':
+				print("Skipping recap path: {0}".format(path))
+				continue
+            
             numImages = len(sorted(path.glob('*.jpg')))
+            
             if numImages > 0:
-                fullOutputPath = outPath / path.relative_to(imgPath).as_posix().replace('/', '__')
+                fullOutputPath = outPath / path.relative_to(imgPath)
                 print("***** recursing into: {0}".format(fullOutputPath))
                 Run_00_CameraInit(fullOutputPath, binPath, path, cameraDbPath)
                 Run_01_FeatureExtraction(fullOutputPath, binPath, numImages)
