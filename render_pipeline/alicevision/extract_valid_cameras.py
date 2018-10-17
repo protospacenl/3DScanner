@@ -7,11 +7,11 @@ BRACKET_PATH_POSITION_FROM_LAST = -3
 SET_POSITION_FROM_LAST          = -4
 SCAN_POSITION_FROM_LAST         = -5
 
-OUTPUT_HEADER_CSV = "path,scan,set,bracket,n_cameras,n_failed,failed"
-OUTPUT_HEADER_MD = """| path | scan | set | bracket | n_cameras | n_failed | failed |
-|:---|:---|:---:|:---:|:---:|:---:|:---:| """
-OUTPUT_FORMAT_CSV = "{path},{scan},{set},{bracket},{ncameras},{failed},{cameras}"
-OUTPUT_FORMAT_MD = "| {path} | {scan} | {set} | {bracket} | {ncameras} | {failed} | {cameras} |"
+OUTPUT_HEADER_CSV = "scan,set,bracket,n_cameras,n_failed,failed"
+OUTPUT_HEADER_MD = """| scan | set | bracket | n_cameras | n_failed | failed |
+|:---|:---:|:---:|:---:|:---:|:---| """
+OUTPUT_FORMAT_CSV = "{scan},{set},{bracket},{ncameras},{failed},{cameras}"
+OUTPUT_FORMAT_MD = "| {scan} | {set} | {bracket} | {ncameras} | {failed} | {cameras} |"
 
 
 def extractCameras(path):
@@ -92,8 +92,7 @@ if __name__ == '__main__':
         print(outputHeader, file=output)
         for sfmPath in sorted(path.glob('**/04_StructureFromMotion/cameras.sfm')):
             scan, set, bracket, ncameras, failed = extractCameras(sfmPath)
-            print(outputFormat.format(path=sfmPath.resolve(),
-                                      scan=scan,
+            print(outputFormat.format(scan=scan,
                                       set=set,
                                       bracket=bracket,
                                       ncameras=ncameras,
@@ -101,8 +100,7 @@ if __name__ == '__main__':
                                       cameras=failed), file=output)
     else:
         scan, set, bracket, ncameras, failed = extractCameras(sfmPath)
-        print(outputFormat.format(path=sfmPath.resolve(),
-                                  scan=scan,
+        print(outputFormat.format(scan=scan,
                                   set=set,
                                   bracket=bracket,
                                   ncameras=ncameras,
