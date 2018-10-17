@@ -7,6 +7,9 @@ BRACKET_PATH_POSITION_FROM_LAST = -3
 SET_POSITION_FROM_LAST          = -4
 SCAN_POSITION_FROM_LAST         = -5
 
+OUTPUT_HEADER_CSV = "path,scan,set,bracket,n_cameras,n_failed,failed"
+OUTPUT_HEADER_DISCOURSE = """| path | scan | set | bracket | n_cameras | n_failed | failed |
+|:---|:---|:---:|:---:|:---:|:---:|:---:| """
 OUTPUT_FORMAT_CSV = "{path},{scan},{set},{bracket},{ncameras},{failed},{cameras}"
 OUTPUT_FORMAT_DISCOURSE = "| {path} | {scan} | {set} | {bracket} | {ncameras} | {failed} | {cameras} |"
 
@@ -25,10 +28,6 @@ def extractCameras(path):
         if not sfmJson:
             print("Failed loading {0}".format(path))
             return None
-
-        if args.output:
-            output = open(Path(args.output), 'a')
-
         for view in sfmJson['views']:
             path = Path(view['path'])
             viewId = view['viewId']
@@ -73,20 +72,26 @@ if __name__ == '__main__':
     output = None
 
     if args.format == 'csv':
+        outputHeader = OUTPUT_HEADER_CSV
         outputFormat = OUTPUT_FORMAT_CSV
     elif args.format == 'discourse':
+        outputHeader = OUTPUT_HEADER_DISCOURSE
         outputFormat = OUTPUT_FORMAT_DISCOURSE
     else:
+        outputHeader = OUTPUT_HEADER_CSV
         outputFormat = OUTPUT_FORMAT_CSV
 
     if not path.exists():
         print("{path} does not exist!".format(path=sfmPath))
         sys.exit(1)
 
+    if args.output:
+        output = open(Path(args.output), 'a')
+
     if args.recursive:
+        print(outputHeader, file=output)
         for sfmPath in sorted(path.glob('**/04_StructureFromMotion/cameras.sfm')):
             scan, set, bracket, ncameras, failed = extractCameras(sfmPath)
-
             print(outputFormat.format(path=sfmPath.resolve(),
                                       scan=scan,
                                       set=set,
