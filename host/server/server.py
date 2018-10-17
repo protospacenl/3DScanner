@@ -161,8 +161,8 @@ def process_data(command):
                     #sock.sendto(str.encode("stop_photo"), multicast_group)
                     sock.sendto(str.encode("light"), master_ip)
                     
-                    winsound.Beep(2500winsound, 500)
-                    winsound.Beep(2500winsound, 500)
+                    winsound.Beep(2500, 500)
+                    winsound.Beep(2500, 500)
                 break
             else:
                 print (data.decode() + str(server))
