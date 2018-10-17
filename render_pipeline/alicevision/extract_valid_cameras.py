@@ -8,10 +8,10 @@ SET_POSITION_FROM_LAST          = -4
 SCAN_POSITION_FROM_LAST         = -5
 
 OUTPUT_HEADER_CSV = "path,scan,set,bracket,n_cameras,n_failed,failed"
-OUTPUT_HEADER_DISCOURSE = """| path | scan | set | bracket | n_cameras | n_failed | failed |
+OUTPUT_HEADER_MD = """| path | scan | set | bracket | n_cameras | n_failed | failed |
 |:---|:---|:---:|:---:|:---:|:---:|:---:| """
 OUTPUT_FORMAT_CSV = "{path},{scan},{set},{bracket},{ncameras},{failed},{cameras}"
-OUTPUT_FORMAT_DISCOURSE = "| {path} | {scan} | {set} | {bracket} | {ncameras} | {failed} | {cameras} |"
+OUTPUT_FORMAT_MD = "| {path} | {scan} | {set} | {bracket} | {ncameras} | {failed} | {cameras} |"
 
 
 def extractCameras(path):
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output",
                         help="path to output file")
     parser.add_argument("-f", "--format",
-                        choices=['csv', 'discourse'],
+                        choices=['csv', 'md'],
                         default='csv',
                         help="output format")
     args = parser.parse_args()
@@ -74,9 +74,9 @@ if __name__ == '__main__':
     if args.format == 'csv':
         outputHeader = OUTPUT_HEADER_CSV
         outputFormat = OUTPUT_FORMAT_CSV
-    elif args.format == 'discourse':
-        outputHeader = OUTPUT_HEADER_DISCOURSE
-        outputFormat = OUTPUT_FORMAT_DISCOURSE
+    elif args.format == 'md':
+        outputHeader = OUTPUT_HEADER_MD
+        outputFormat = OUTPUT_FORMAT_MD
     else:
         outputHeader = OUTPUT_HEADER_CSV
         outputFormat = OUTPUT_FORMAT_CSV
