@@ -27,6 +27,7 @@ import PIL.ImageTk
 from tkinter import messagebox as mb
 from tkinter import *
 from tkinter import ttk
+from tkinter import filedialog
 import tkinter as tk
 
 import numpy as np
@@ -35,6 +36,7 @@ import urllib
 import urllib.request
 from http import server
 import socketserver
+import winsound
 
 client_path = r"C:\Users\Public\GitHub\3DScanner\firmware\client\Client.py"
 multicast_group = ('224.0.0.10', 10000)
@@ -62,8 +64,11 @@ window.title("3D Scanner")
 window.geometry("895x540")
 
 preview_label  = tk.LabelFrame(window, text="Camera preview", width=655, height=505, labelanchor=N).place(x=220, y=10)
+default_path_label = tk.Label(window, text="Select download path").grid(column=1, row=4, sticky=W)
 preview_image  = tk.Label(window)
 preview_image.place(x=225, y=25)
+
+download_path = None
 
 def download_photos(ip, remote_path, local_path):
     try:
@@ -123,11 +128,13 @@ def process_data(command):
                 data_flag = 1
                 photo_number += 1
                 
+
                 if command[0:5] == "photo" and photo_number == len(connection_list):
                     current_photo += 1
                     photo_number = 0
                     sock.sendto(str.encode(str(current_photo)), multicast_group)
-                    tk.Label(window, text="{0} photo(s) done".format(current_photo)).grid(column=1, row=0, sticky=W)     
+                    tk.Label(window, text="{0} photo(s) done".format(current_photo)).grid(column=1, row=0, sticky=W)
+
                     
                 if command == "connect":  
                     ip = str(server)[2:15]
@@ -153,13 +160,16 @@ def process_data(command):
                 if command[0:5] == "photo":
                     #sock.sendto(str.encode("stop_photo"), multicast_group)
                     sock.sendto(str.encode("light"), master_ip)
+                    
+                    winsound.Beep(2500winsound, 500)
+                    winsound.Beep(2500winsound, 500)
                 break
             else:
                 print (data.decode() + str(server))
                 
     finally:
         return 1
-    
+
 def connection_check():
     if not connection_list:
         print("Connection not yet established, please run connect function")
@@ -174,6 +184,7 @@ def connect():
     del connection_list[:]
     del camera_list[:]
     process_data("connect")
+
     tk.Label(window, text="{0} camera(s) connected".format(len(connection_list))).grid(column=1, row=7, sticky=W)
     
     if connection_check() == 1:
@@ -189,6 +200,7 @@ def photo():
         par2 = delay.get()
         if (par1.isdigit() and (par2.isdigit() or float_check.match(par2))):
             if (int(par1) <= 50 and float(par2) <= 5):
+                winsound.Beep(2500, 600)
                 message = ("photo" + " " + par1 + " " + par2)
                 print ('sending "%s"' % message)
                 process_data(message)
@@ -199,28 +211,42 @@ def photo():
         return 99
     return 404
 
+def save_to_directory():
+    global download_path 
+
+    download_path = Path(filedialog.askdirectory()) #open file dialog
+    print(download_path)
+
+    if download_path == "":
+        tk.Label(window, text="Select download path").grid(column=1, row=4, sticky=W)
+    else: 
+        tk.Label(window, text="File path: {0}".format(download_path)).grid(column=1, row=4, sticky=W) 
+
 def download():
-    global download_flag
+    global download_flag, download_path
     download_flag = 0
     counter_thread = threading.Thread(target=counter)
     counter_thread.start()
-    if connection_check() == 1:
+    
+    if connection_check() == 1: 
         download_message = "Downloading photos"
         print(download_message)
-        na = folder.get()
-        if not os.path.exists("c:\Temp\_pifotos\%s" %na):
-            os.system ('mkdir c:\Temp\_pifotos\%s' %na)
-        else:
+
+        if not download_path or not download_path.exists():  
+            print("Path {0} does not exist".format(download_path))
+            download_flag = 1
+            return 2
+        elif len(sorted(download_path.glob("**/*.jpg"))) > 0:
             result = mb.askquestion("Folder already exists", "Are you sure you wish to overwrite an existing folder?", icon='warning')
-            if result == "no":
+            if result == "no": 
                 print("Download aborted")
                 download_flag = 1
                 return 2
-
+                
         download_pool = Pool(len(connection_list))
         download_map = []
         for x in range (0, len(connection_list)):
-            args = (connection_list[x], '/opt/3dscanner/photos/*', 'c:\Temp\_pifotos\{0}\\'.format(na))
+            args = (connection_list[x], '/opt/3dscanner/photos/*', "{0}".format(download_path.resolve()))
             download_map.append(args)
         download_result = download_pool.starmap(download_photos, download_map)
         
@@ -231,9 +257,8 @@ def download():
         download_flag = 1
         return 1
     return 404
-   
+
 def sync():
-    
     if connection_check() == 1:
     
         for x in range (0, len(connection_list)):
@@ -308,7 +333,9 @@ commands = {0 : photo,
             3 : reload,
             4 : connect,
             5 : kill,
-            6 : preview,}
+            6 : preview,
+            7 : None,
+            8 : save_to_directory}
 
 def button(command_number):
     global current_thread
@@ -350,15 +377,16 @@ p_menu  = tk.StringVar()
 
 createEntry("Amount", 1, 6,  amount)
 createEntry("Delay",  2, 6,  delay )
-createEntry("Folder", 4, 10, folder)
+#createEntry("Folder", 5, 10, folder)
 
 createButton("Photos",   0, "white", 0)
-createButton("Download", 3, "white", 1)
-createButton("Sync",     5, "white", 2)
-createButton("Reload",   6, "white", 3)
-createButton("Connect",  7, "white", 4)
-createButton("Kill",     8, "white", 5)
-preview_button  = createButton("Preview",  9, "white", 6)
+createButton("Download", 4, "white", 1)
+createButton("Save to...", 3, "white", 8)
+createButton("Sync",     6, "white", 2)
+createButton("Reload",   7, "white", 3)
+createButton("Connect",  8, "white", 4)
+createButton("Kill",     9, "white", 5)
+preview_button  = createButton("Preview",  10, "white", 6)
 
 createLabel("max. 50", 110, 25)
 createLabel("max. 5s", 110, 45)
