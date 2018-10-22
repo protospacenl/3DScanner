@@ -38,6 +38,10 @@ from http import server
 import socketserver
 import winsound
 
+import serial 
+import time 
+import pyfirmata
+
 client_path = r"C:\Users\Public\GitHub\3DScanner\firmware\client\Client.py"
 multicast_group = ('224.0.0.10', 10000)
 master_ip = ('192.168.178.20', 10000)
@@ -69,6 +73,29 @@ preview_image  = tk.Label(window)
 preview_image.place(x=225, y=25)
 
 download_path = None
+
+current_thread = None
+button_thread = None
+_pollButton = True
+
+def read_button_loop():
+    global _pollButton
+
+    btnInterface = pyfirmata.Arduino("COM4")
+    btnButton = btnInterface.get_pin('d:2:i')
+    iterator = pyfirmata.util.Iterator(btnInterface)
+    iterator.start()
+
+    while _pollButton:
+        print("poll: {0}".format(_pollButton))
+        if str(btnButton.read()) == 'True':
+            print(btnButton.read())
+            print(photo())
+            btnInterface.pass_time(1)
+        else:
+            print(btnButton.read())
+            btnInterface.pass_time(1)
+        time.sleep(0.5)
 
 def download_photos(ip, remote_path, local_path):
     try:
@@ -397,5 +424,8 @@ preview_dropdwn.place(x=67, y=220)
 
 current_thread = threading.Thread(target=commands[4])
 current_thread.start()
+
+button_thread = threading.Thread(target=read_button_loop)
+button_thread.start()
 
 window.mainloop()
