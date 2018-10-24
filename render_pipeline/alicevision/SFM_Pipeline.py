@@ -1,9 +1,14 @@
 import argparse
 from pathlib import Path
+import shutil
 import platform
 import sys
 import os
 from math import floor
+
+BRACKET_PATH_POSITION_FROM_LAST = -1
+SET_POSITION_FROM_LAST          = -2
+SCAN_POSITION_FROM_LAST         = -3
 
 DIR_CAMERA_INIT             = "00_CameraInit"
 DIR_FEATURE_EXTRACTION      = "01_FeatureExtraction"
@@ -24,8 +29,10 @@ if platform.system() == 'Windows':
 
 # below functions are based on the run_alicevision.py by
 # http://filmicworlds.com/blog/command-line-photogrammetry-with-alicevision/
+
+
 def Run_00_CameraInit(outPath, binPath, imgPath, cameraDbFile=""):
-    dstDir = outPath / DIR_CAMERA_INIT 
+    dstDir = outPath / DIR_CAMERA_INIT
     output = dstDir / "cameraInit.sfm"
 
     dstDir.mkdir(parents=True, exist_ok=True)
@@ -128,7 +135,6 @@ def Run_04_StructureFromMotion(outPath, binPath):
     dstDir = outPath / DIR_STRUCTURE_FROM_MOTION
     srcSfm = outPath / DIR_CAMERA_INIT / "cameraInit.sfm"
     srcFeatures = outPath / DIR_FEATURE_EXTRACTION
-    srcImageMatches = outPath / DIR_IMAGE_MATCHING / "imageMatches.txt"
     srcMatches = outPath / DIR_FEATURE_MATCHING
     binName = binPath / "aliceVision_incrementalSfm{0}".format(_exe_extension)
 
@@ -233,7 +239,6 @@ def Run_07_DepthMap(outPath, binPath, numImages, groupSize):
     cmdLine = cmdLine + " --ini \"{0}\"".format(srcIni)
     cmdLine = cmdLine + " --output \"{0}\"".format(dstDir)
 
-
     for groupIter in range(numGroups):
         groupStart = groupSize * groupIter
         groupSize = min(groupSize, numImages - groupStart)
@@ -251,6 +256,7 @@ def Run_07_DepthMap(outPath, binPath, numImages, groupSize):
     #os.system(cmd)
 
     return 0
+
 
 def Run_08_DepthMapFilter(outPath, binPath):
     dstDir = outPath / DIR_DEPTH_MAP_FILTER
@@ -274,6 +280,7 @@ def Run_08_DepthMapFilter(outPath, binPath):
     print(cmdLine)
     os.system(cmdLine)
     return 0
+
 
 def Run_09_Meshing(outPath, binPath):
     dstDir = outPath / DIR_MESHING
@@ -306,10 +313,11 @@ def Run_09_Meshing(outPath, binPath):
     cmdLine = cmdLine + " --depthMapFilterFolder \"{0}\"".format(srcDepthFilterDir)
     cmdLine = cmdLine + " --depthMapFolder \"{0}\"".format(srcDepthMapDir)
     cmdLine = cmdLine + " --output \"{0}\"".format(dstDir / "mesh.obj")
-    
+
     print(cmdLine)
     os.system(cmdLine)
     return 0
+
 
 def Run_10_MeshFiltering(outPath, binPath):
     dstDir = outPath / DIR_MESH_FILTERING
@@ -332,6 +340,7 @@ def Run_10_MeshFiltering(outPath, binPath):
     print(cmdLine)
     os.system(cmdLine)
     return 0
+
 
 def Run_11_Texturing(outPath, binPath):
     dstDir = outPath / DIR_TEXTURING
@@ -362,30 +371,32 @@ def Run_11_Texturing(outPath, binPath):
 
     return 0
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--bindir", dest="bindir", required=True,
-                    help="path to alice binaries")
+                        help="path to alice binaries")
     parser.add_argument("-i", "--imagedir", dest="imgdir", required=True,
-                    help="path to image")
+                        help="path to image")
     parser.add_argument("-o", "--output", dest="outdir", required=True,
-                    help="path to output")
+                        help="path to output")
     parser.add_argument("-n", "--num", type=int, dest="numImages",
-                    help="number of images")
+                        help="number of images")
     parser.add_argument("-c", "--cameradb", dest="cameradb", required=True,
-                    help="path to camera db file")
-    parser.add_argument("-r", "--recursive", dest="recursive", 
-                    help="recurse through images path", action="store_true")
-    parser.add_argument("-d", "--depthmap", dest="do_depthmap", 
-                    help="generate depth map", action="store_true")
-    parser.add_argument("-m", "--meshing", dest="do_meshing", 
-                    help="generate mesh, implies -d", action="store_true")
-    parser.add_argument("-t", "--texturing", dest="do_texturing", 
-                    help="add texture, implies -d and -m", action="store_true")
+                        help="path to camera db file")
+    parser.add_argument("-r", "--recursive", dest="recursive",
+                        help="recurse through images path", action="store_true")
+    parser.add_argument("-d", "--depthmap", dest="do_depthmap",
+                        help="generate depth map", action="store_true")
+    parser.add_argument("-m", "--meshing", dest="do_meshing",
+                        help="generate mesh, implies -d", action="store_true")
+    parser.add_argument("-t", "--texturing", dest="do_texturing",
+                        help="add texture, implies -d and -m", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",
-                    help="increase output verbosity")
+                        help="increase output verbosity")
+    parser.add_argument("-f", "--finalOutputPath",
+                        help="Final path to copy textured mesh to")
     args = parser.parse_args()
-
 
     binPath = Path(args.bindir)
     imgPath = Path(args.imgdir)
@@ -400,15 +411,14 @@ if __name__ == '__main__':
         print("{0} does not exist".format(binPath))
         sys.exit(1)
 
-
     if args.recursive:
         for path in sorted(imgPath.glob('**/')):
             if path.stem.lower() == 'recap':
                 print("Skipping recap path: {0}".format(path))
                 continue
-            
+
             numImages = len(sorted(path.glob('*.jpg')))
-            
+
             if numImages > 0:
                 fullOutputPath = outPath / path.relative_to(imgPath)
                 print("***** recursing into: {0}".format(fullOutputPath))
@@ -429,6 +439,19 @@ if __name__ == '__main__':
 
                         if args.do_texturing:
                             Run_11_Texturing(fullOutputPath, binPath)
+
+                            if args.finalOutputPath is not None:
+                                finalOutputPath = Path(args.finalOutputPath) / '_'.join(fullOutputPath.parts)
+                                finalOutputPath.mkdir(parents=True, exist_ok=True)
+                                for file in sorted((fullOutputPath / DIR_TEXTURING).glob('*')):
+                                    print("copying file: {0}".format(file))
+                                    try:
+                                        shutil.copy(file.as_posix(), (finalOutputPath / file.name).as_posix())
+                                    except shutil.Error as e:
+                                        print('Could not copy file. Error: %s' % e)
+                                    except OSError as e:
+                                        print('Could not copy file. Error: %s' % e)
+
     else:
         numImages = 0
         if args.numImages:
@@ -454,3 +477,15 @@ if __name__ == '__main__':
 
                     if args.do_texturing:
                         Run_11_Texturing(outPath, binPath)
+
+                        if args.finalOutputPath is not None:
+                            finalOutputPath = Path(args.finalOutputPath) / '_'.join(fullOutputPath.parts)
+                            finalOutputPath.mkdir(parents=True, exist_ok=True)
+                            for file in sorted((fullOutputPath / DIR_TEXTURING).glob('*')):
+                                print("copying file: {0}".format(file))
+                                try:
+                                    shutil.copy(file.as_posix(), (finalOutputPath / file.name).as_posix())
+                                except shutil.Error as e:
+                                    print('Could not copy file. Error: %s' % e)
+                                except OSError as e:
+                                    print('Could not copy file. Error: %s' % e)
