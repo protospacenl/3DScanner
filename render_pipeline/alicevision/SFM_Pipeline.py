@@ -76,7 +76,7 @@ def Run_00_CameraInit(outPath, binPath, imgPath, cameraDbFile=""):
     return 0
 
 
-def Run_01_FeatureExtraction(outPath, binPath, numImages):
+def Run_01_FeatureExtraction(outPath, binPath, numImages, ultra=False):
     dstDir = outPath / DIR_FEATURE_EXTRACTION
     srcSfm = outPath / DIR_CAMERA_INIT / "cameraInit.sfm"
     binName = binPath / "aliceVision_featureExtraction{0}".format(_exe_extension)
@@ -86,11 +86,13 @@ def Run_01_FeatureExtraction(outPath, binPath, numImages):
     cmdLine = "{0}".format(binName)
     cmdLine = cmdLine + " --describerTypes sift"
     cmdLine = cmdLine + " --verboseLevel info"
-    cmdLine = cmdLine + " --describerPreset normal"
     cmdLine = cmdLine + " --rangeStart 0"
     cmdLine = cmdLine + " --rangeSize {0}".format(numImages)
     cmdLine = cmdLine + " --input \"{0}\"".format(srcSfm)
     cmdLine = cmdLine + " --output \"{0}\"".format(dstDir)
+
+    if ultra:
+        cmdLine = cmdLine + " --describerPreset ultra"
 
     print(cmdLine)
     os.system(cmdLine)
