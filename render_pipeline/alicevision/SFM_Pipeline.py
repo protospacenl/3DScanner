@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import json
 import shutil
 import platform
 import sys
@@ -48,6 +49,27 @@ def Run_00_CameraInit(outPath, binPath, imgPath, cameraDbFile=""):
 
     print(cmdLine)
     os.system(cmdLine)
+
+    if output.exists():
+
+        sfmJson = None
+
+        with open(output) as sfmFile:
+            sfmJson = json.load(sfmFile)
+
+        if not sfmJson:
+            print("Failed loading {0}".format(output))
+            return 0
+        for view in sfmJson['views']:
+            path = Path(view['path'])
+
+            cameraId = path.stem
+            if '.' in cameraId:
+                cameraId = int(cameraId.split('.')[-1]) - 100
+            view['viewId'] = cameraId
+
+        with open(output, 'wt') as sfmFile:
+            json.dump(sfmJson, sfmFile, indent=4)
 
     return 0
 
