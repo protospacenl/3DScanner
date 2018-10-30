@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import shutil
 import platform
+import subprocess
 import sys
 import os
 from math import floor
@@ -435,6 +436,24 @@ def Run_exportMatches(outPath, binPath):
     return 0
 
 
+def convert_svg_to_png(from_path):
+    for file in sorted(from_path.glob('*.svg')):
+
+        cmd_list = ["{0}".format(Path('C:\\Program Files\\Inkscape\\inkscape.exe')), '-z',
+                    '--export-png', "{0}".format(file.with_suffix('.png')),
+                    '--export-width', "640",
+                    "{0}".format(file)]
+
+        # Invoke the command.  Divert output that normally goes to stdout or stderr.
+        p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # Below, < out > and < err > are strings or < None >, derived from stdout and stderr.
+        out, err = p.communicate()      # Waits for process to terminate
+
+        if p.returncode:
+            raise Exception('Inkscape error: ' + (err or '?'))
+
+
 def copy_files(from_path, to_path):
     if not from_path.exists():
         return
@@ -479,6 +498,8 @@ if __name__ == '__main__':
                         help="add texture, implies -d and -m", action="store_true")
     parser.add_argument("--pathParts", type=int, default=3,
                         help="use last n path parts to construct result output name")
+    parser.add_argument("--svg2png", dest="doSvg2Png",
+                        help="convert svg to png", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="increase output verbosity")
 
@@ -493,7 +514,7 @@ if __name__ == '__main__':
         print("{0} does not exist".format(binPath))
         sys.exit(1)
 
-    if not imgPath.exists():
+    if args.doStructureFromMotion and not imgPath.exists():
         print("{0} does not exist".format(binPath))
         sys.exit(1)
 
@@ -524,13 +545,25 @@ if __name__ == '__main__':
 
             if args.doExportKeypoints and (fullOutputPath / DIR_STRUCTURE_FROM_MOTION).exists():
                 Run_exportKeypoints(fullOutputPath, binPath)
-                if (fullOutputPath / DIR_EXPORT_KEYPOINTS).exists() and resultPath is not None:
-                    copy_files(fullOutputPath / DIR_EXPORT_KEYPOINTS, resultPath / DIR_EXPORT_KEYPOINTS)
+
+                keypointsPath = fullOutputPath / DIR_EXPORT_KEYPOINTS
+                if keypointsPath.exists():
+                    if args.doSvg2Png:
+                        convert_svg_to_png(keypointsPath)
+
+                    if resultPath is not None:
+                        copy_files(keypointsPath, resultPath / DIR_EXPORT_KEYPOINTS)
 
             if args.doExportMatches and (fullOutputPath / DIR_STRUCTURE_FROM_MOTION).exists():
                 Run_exportMatches(fullOutputPath, binPath)
-                if (fullOutputPath / DIR_EXPORT_MATCHES).exists() and resultPath is not None:
-                    copy_files(fullOutputPath / DIR_EXPORT_MATCHES, resultPath / DIR_EXPORT_MATCHES)
+
+                matchesPath = fullOutputPath / DIR_EXPORT_MATCHES
+                if matchesPath.exists():
+                    if args.doSvg2Png:
+                        convert_svg_to_png(matchesPath)
+
+                    if resultPath is not None:
+                        copy_files(fullOutputPath / DIR_EXPORT_MATCHES, resultPath / DIR_EXPORT_MATCHES)
 
             if args.doGenerateDepthMap or args.doGenerateMesh or args.doApplyTexture:
                 Run_05_PrepareDenseScene(fullOutputPath, binPath)
