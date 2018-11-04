@@ -1,7 +1,9 @@
 import argparse
 from pathlib import Path
+import json
 import shutil
 import platform
+import subprocess
 import sys
 import os
 from math import floor
@@ -22,6 +24,8 @@ DIR_DEPTH_MAP_FILTER        = "08_DepthMapFilter"
 DIR_MESHING                 = "09_Meshing"
 DIR_MESH_FILTERING          = "10_MeshFiltering"
 DIR_TEXTURING               = "11_Texturing"
+DIR_EXPORT_KEYPOINTS        = "exp_keypoints"
+DIR_EXPORT_MATCHES          = "exp_matches"
 
 _exe_extension = ''
 if platform.system() == 'Windows':
@@ -49,10 +53,31 @@ def Run_00_CameraInit(outPath, binPath, imgPath, cameraDbFile=""):
     print(cmdLine)
     os.system(cmdLine)
 
+    if output.exists():
+
+        sfmJson = None
+
+        with open(output) as sfmFile:
+            sfmJson = json.load(sfmFile)
+
+        if not sfmJson:
+            print("Failed loading {0}".format(output))
+            return 0
+        for view in sfmJson['views']:
+            path = Path(view['path'])
+
+            cameraId = path.stem
+            if '.' in cameraId:
+                cameraId = int(cameraId.split('.')[-1]) - 100
+            view['viewId'] = cameraId
+
+        with open(output, 'wt') as sfmFile:
+            json.dump(sfmJson, sfmFile, indent=4)
+
     return 0
 
 
-def Run_01_FeatureExtraction(outPath, binPath, numImages):
+def Run_01_FeatureExtraction(outPath, binPath, numImages, ultra=False):
     dstDir = outPath / DIR_FEATURE_EXTRACTION
     srcSfm = outPath / DIR_CAMERA_INIT / "cameraInit.sfm"
     binName = binPath / "aliceVision_featureExtraction{0}".format(_exe_extension)
@@ -62,11 +87,13 @@ def Run_01_FeatureExtraction(outPath, binPath, numImages):
     cmdLine = "{0}".format(binName)
     cmdLine = cmdLine + " --describerTypes sift"
     cmdLine = cmdLine + " --verboseLevel info"
-    cmdLine = cmdLine + " --describerPreset normal"
     cmdLine = cmdLine + " --rangeStart 0"
     cmdLine = cmdLine + " --rangeSize {0}".format(numImages)
     cmdLine = cmdLine + " --input \"{0}\"".format(srcSfm)
     cmdLine = cmdLine + " --output \"{0}\"".format(dstDir)
+
+    if ultra:
+        cmdLine = cmdLine + " --describerPreset ultra"
 
     print(cmdLine)
     os.system(cmdLine)
@@ -200,7 +227,7 @@ def Run_06_CameraConnection(outPath, binPath):
 
     # This step kindof breaks the directory structure. Tt creates
     # a camsPairsMatrixFromSeeds.bin file in in the same file as mvs.ini
-    binName = binPath /  "aliceVision_cameraConnection{0}".format(_exe_extension)
+    binName = binPath / "aliceVision_cameraConnection{0}".format(_exe_extension)
 
     cmdLine = "{0}".format(binName)
     cmdLine = cmdLine + " --verboseLevel info"
@@ -247,13 +274,6 @@ def Run_07_DepthMap(outPath, binPath, numImages, groupSize):
         cmd = cmdLine + " --rangeStart {start} --rangeSize {size}".format(start=groupStart, size=groupSize)
         print(cmd)
         os.system(cmd)
-
-
-    #cmd = "aliceVision_depthMapEstimation  --sgmGammaC 5.5 --sgmWSH 4 --refineGammaP 8.0 --refineSigma 15 --refineNSamplesHalf 150 --sgmMaxTCams 10 --refineWSH 3 --downscale 2 --refineMaxTCams 6 --verboseLevel info --refineGammaC 15.5 --sgmGammaP 8.0 --ini \"c:/users/geforce/appdata/local/temp/MeshroomCache/PrepareDenseScene/4f0d6d9f9d072ed05337fd7c670811b1daa00e62/mvs.ini\" --refineNiters 100 --refineNDepthsToRefine 31 --refineUseTcOrRcPixSize False --output \"c:/users/geforce/appdata/local/temp/MeshroomCache/DepthMap/18f3bd0a90931bd749b5eda20c8bf9f6dab63af9\" --rangeStart 0 --rangeSize 3"
-    #cmd = binName + " --sgmGammaC 5.5 --sgmWSH 4 --refineGammaP 8.0 --refineSigma 15 --refineNSamplesHalf 150 --sgmMaxTCams 10 --refineWSH 3 --downscale 2 --refineMaxTCams 6 --verboseLevel info --refineGammaC 15.5 --sgmGammaP 8.0 --ini \"c:/users/geforce/appdata/local/temp/MeshroomCache/PrepareDenseScene/4f0d6d9f9d072ed05337fd7c670811b1daa00e62/mvs.ini\" --refineNiters 100 --refineNDepthsToRefine 31 --refineUseTcOrRcPixSize False --output \"build_files/07_DepthMap/\" --rangeStart 0 --rangeSize 3"
-    #cmd = binName + " --sgmGammaC 5.5 --sgmWSH 4 --refineGammaP 8.0 --refineSigma 15 --refineNSamplesHalf 150 --sgmMaxTCams 10 --refineWSH 3 --downscale 2 --refineMaxTCams 6 --verboseLevel info --refineGammaC 15.5 --sgmGammaP 8.0 --ini \"" + srcIni + "\" --refineNiters 100 --refineNDepthsToRefine 31 --refineUseTcOrRcPixSize False --output \"build_files/07_DepthMap/\" --rangeStart 0 --rangeSize 3"
-    #print(cmd)
-    #os.system(cmd)
 
     return 0
 
@@ -372,6 +392,84 @@ def Run_11_Texturing(outPath, binPath):
     return 0
 
 
+def Run_exportKeypoints(outPath, binPath):
+    dstDir = outPath / DIR_EXPORT_KEYPOINTS
+
+    srcSfm = outPath / DIR_STRUCTURE_FROM_MOTION / "bundle.sfm"
+    srcFeatures = outPath / DIR_FEATURE_EXTRACTION
+
+    dstDir.mkdir(parents=True, exist_ok=True)
+
+    binName = binPath / "aliceVision_exportKeypoints{0}".format(_file_extension)
+    cmdLine = "{0}".format(binName)
+    cmdLine = cmdLine + " --input \"{0}\"".format(srcSfm)
+    cmdLine = cmdLine + " --output \"{0}\"".format(dstDir)
+    cmdLine = cmdLine + " --featuresFolders \"{0}\"".format(srcFeatures)
+    cmdLine = cmdLine + " --verboseLevel info"
+
+    print(cmdLine)
+    os.system(cmdLine)
+
+    return 0
+
+
+def Run_exportMatches(outPath, binPath):
+    dstDir = outPath / DIR_EXPORT_MATCHES
+
+    srcSfm = outPath / DIR_STRUCTURE_FROM_MOTION / "bundle.sfm"
+    srcFeatures = outPath / DIR_FEATURE_EXTRACTION
+    srcMatches = outPath / DIR_FEATURE_MATCHING
+
+    dstDir.mkdir(parents=True, exist_ok=True)
+
+    binName = binPath / "aliceVision_exportMatches{0}".format(_file_extension)
+    cmdLine = "{0}".format(binName)
+    cmdLine = cmdLine + " --input \"{0}\"".format(srcSfm)
+    cmdLine = cmdLine + " --output \"{0}\"".format(dstDir)
+    cmdLine = cmdLine + " --featuresFolders \"{0}\"".format(srcFeatures)
+    cmdLine = cmdLine + " --matchesFolders \"{0}\"".format(srcMatches)
+    cmdLine = cmdLine + " --verboseLevel info"
+
+    print(cmdLine)
+    os.system(cmdLine)
+
+    return 0
+
+
+def convert_svg_to_png(from_path):
+    for file in sorted(from_path.glob('*.svg')):
+
+        cmd_list = ["{0}".format(Path('C:\\Program Files\\Inkscape\\inkscape.exe')), '-z',
+                    '--export-png', "{0}".format(file.with_suffix('.png')),
+                    '--export-width', "640",
+                    "{0}".format(file)]
+
+        # Invoke the command.  Divert output that normally goes to stdout or stderr.
+        p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        # Below, < out > and < err > are strings or < None >, derived from stdout and stderr.
+        out, err = p.communicate()      # Waits for process to terminate
+
+        if p.returncode:
+            raise Exception('Inkscape error: ' + (err or '?'))
+
+
+def copy_files(from_path, to_path):
+    if not from_path.exists():
+        return
+
+    to_path.mkdir(parents=True, exist_ok=True)
+
+    for file in sorted(from_path.glob('*')):
+        print("copying file: {fromPath} -> {toPath}".format(fromPath=file, toPath=to_path))
+        try:
+            shutil.copy(file.as_posix(), (to_path / file.name).as_posix())
+        except shutil.Error as e:
+            print('Could not copy file. Error: %s' % e)
+        except OSError as e:
+            print('Could not copy file. Error: %s' % e)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--bindir", dest="bindir", required=True,
@@ -380,22 +478,31 @@ if __name__ == '__main__':
                         help="path to image")
     parser.add_argument("-o", "--output", dest="outdir", required=True,
                         help="path to output")
-    parser.add_argument("-n", "--num", type=int, dest="numImages",
-                        help="number of images")
     parser.add_argument("-c", "--cameradb", dest="cameradb", required=True,
                         help="path to camera db file")
-    parser.add_argument("-r", "--recursive", dest="recursive",
-                        help="recurse through images path", action="store_true")
-    parser.add_argument("-d", "--depthmap", dest="do_depthmap",
+    parser.add_argument("--resultPath",
+                        help="path to export results to")
+    parser.add_argument("-u", "--ultra", action="store_true",
+                        help="set describer preset to ultra")
+    parser.add_argument("--structureFromMotion", dest="doStructureFromMotion", action="store_true",
+                        help="export keypoints")
+    parser.add_argument("--exportKeypoints", dest="doExportKeypoints", action="store_true",
+                        help="export keypoints")
+    parser.add_argument("--exportMatches", dest="doExportMatches", action="store_true",
+                        help="export matches")
+    parser.add_argument("-d", "--depthmap", dest="doGenerateDepthMap",
                         help="generate depth map", action="store_true")
-    parser.add_argument("-m", "--meshing", dest="do_meshing",
+    parser.add_argument("-m", "--meshing", dest="doGenerateMesh",
                         help="generate mesh, implies -d", action="store_true")
-    parser.add_argument("-t", "--texturing", dest="do_texturing",
+    parser.add_argument("-t", "--texturing", dest="doApplyTexture",
                         help="add texture, implies -d and -m", action="store_true")
+    parser.add_argument("--pathParts", type=int, default=3,
+                        help="use last n path parts to construct result output name")
+    parser.add_argument("--svg2png", dest="doSvg2Png",
+                        help="convert svg to png", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="increase output verbosity")
-    parser.add_argument("-f", "--finalOutputPath",
-                        help="Final path to copy textured mesh to")
+
     args = parser.parse_args()
 
     binPath = Path(args.bindir)
@@ -407,85 +514,69 @@ if __name__ == '__main__':
         print("{0} does not exist".format(binPath))
         sys.exit(1)
 
-    if not imgPath.exists():
+    if args.doStructureFromMotion and not imgPath.exists():
         print("{0} does not exist".format(binPath))
         sys.exit(1)
 
-    if args.recursive:
-        for path in sorted(imgPath.glob('**/')):
-            if path.stem.lower() == 'recap':
-                print("Skipping recap path: {0}".format(path))
-                continue
+    for path in sorted(imgPath.glob('**/')):
+        if path.stem.lower() == 'recap':
+            print("Skipping recap path: {0}".format(path))
+            continue
 
-            numImages = len(sorted(path.glob('*.jpg')))
+        numImages = len(sorted(path.glob('*.jpg')))
 
-            if numImages > 0:
-                fullOutputPath = outPath / path.relative_to(imgPath)
-                print("***** recursing into: {0}".format(fullOutputPath))
+        if numImages > 0:
+            fullOutputPath = outPath / path.relative_to(imgPath)
+            resultPath = None
+
+            if args.resultPath is not None:
+                resultPath = Path(args.resultPath) / '/'.join(fullOutputPath.parts[-args.pathParts:])
+
+            print("**** Image path: {0}".format(path))
+            print("**** Output path: {0}".format(fullOutputPath))
+            print("**** Result path: {0}".format(resultPath))
+
+            if args.doStructureFromMotion:
                 Run_00_CameraInit(fullOutputPath, binPath, path, cameraDbPath)
-                Run_01_FeatureExtraction(fullOutputPath, binPath, numImages)
+                Run_01_FeatureExtraction(fullOutputPath, binPath, numImages, ultra=args.ultra)
                 Run_02_ImageMatching(fullOutputPath, binPath)
                 Run_03_FeatureMatching(fullOutputPath, binPath)
                 Run_04_StructureFromMotion(fullOutputPath, binPath)
-                if args.do_depthmap or args.do_meshing or args.do_texturing:
-                    Run_05_PrepareDenseScene(fullOutputPath, binPath)
-                    Run_06_CameraConnection(fullOutputPath, binPath)
-                    Run_07_DepthMap(fullOutputPath, binPath, numImages, 3)
-                    Run_08_DepthMapFilter(fullOutputPath, binPath)
 
-                    if args.do_meshing or args.do_texturing:
-                        Run_09_Meshing(fullOutputPath, binPath)
-                        Run_10_MeshFiltering(fullOutputPath, binPath)
+            if args.doExportKeypoints and (fullOutputPath / DIR_STRUCTURE_FROM_MOTION).exists():
+                Run_exportKeypoints(fullOutputPath, binPath)
 
-                        if args.do_texturing:
-                            Run_11_Texturing(fullOutputPath, binPath)
+                keypointsPath = fullOutputPath / DIR_EXPORT_KEYPOINTS
+                if keypointsPath.exists():
+                    if args.doSvg2Png:
+                        convert_svg_to_png(keypointsPath)
 
-                            if args.finalOutputPath is not None:
-                                finalOutputPath = Path(args.finalOutputPath) / '_'.join(fullOutputPath.parts)
-                                finalOutputPath.mkdir(parents=True, exist_ok=True)
-                                for file in sorted((fullOutputPath / DIR_TEXTURING).glob('*')):
-                                    print("copying file: {0}".format(file))
-                                    try:
-                                        shutil.copy(file.as_posix(), (finalOutputPath / file.name).as_posix())
-                                    except shutil.Error as e:
-                                        print('Could not copy file. Error: %s' % e)
-                                    except OSError as e:
-                                        print('Could not copy file. Error: %s' % e)
+                    if resultPath is not None:
+                        copy_files(keypointsPath, resultPath / DIR_EXPORT_KEYPOINTS)
 
-    else:
-        numImages = 0
-        if args.numImages:
-            numImages = args.numImages
-        else:
-            numImages = len(sorted(imgPath.glob('*.jpg')))
+            if args.doExportMatches and (fullOutputPath / DIR_STRUCTURE_FROM_MOTION).exists():
+                Run_exportMatches(fullOutputPath, binPath)
 
-        if numImages > 0:
-            Run_00_CameraInit(outPath, binPath, imgPath, cameraDbPath)
-            Run_01_FeatureExtraction(outPath, binPath, numImages)
-            Run_02_ImageMatching(outPath, binPath)
-            Run_03_FeatureMatching(outPath, binPath)
-            Run_04_StructureFromMotion(outPath, binPath)
-            if args.do_depthmap or args.do_meshing or args.do_texturing:
-                Run_05_PrepareDenseScene(outPath, binPath)
-                Run_06_CameraConnection(outPath, binPath)
-                Run_07_DepthMap(outPath, binPath, numImages, 3)
-                Run_08_DepthMapFilter(outPath, binPath)
+                matchesPath = fullOutputPath / DIR_EXPORT_MATCHES
+                if matchesPath.exists():
+                    if args.doSvg2Png:
+                        convert_svg_to_png(matchesPath)
 
-                if args.do_meshing or args.do_texturing:
-                    Run_09_Meshing(outPath, binPath)
-                    Run_10_MeshFiltering(outPath, binPath)
+                    if resultPath is not None:
+                        copy_files(fullOutputPath / DIR_EXPORT_MATCHES, resultPath / DIR_EXPORT_MATCHES)
 
-                    if args.do_texturing:
-                        Run_11_Texturing(outPath, binPath)
+            if args.doGenerateDepthMap or args.doGenerateMesh or args.doApplyTexture:
+                Run_05_PrepareDenseScene(fullOutputPath, binPath)
+                Run_06_CameraConnection(fullOutputPath, binPath)
+                Run_07_DepthMap(fullOutputPath, binPath, numImages, 3)
+                Run_08_DepthMapFilter(fullOutputPath, binPath)
 
-                        if args.finalOutputPath is not None:
-                            finalOutputPath = Path(args.finalOutputPath) / '_'.join(fullOutputPath.parts)
-                            finalOutputPath.mkdir(parents=True, exist_ok=True)
-                            for file in sorted((fullOutputPath / DIR_TEXTURING).glob('*')):
-                                print("copying file: {0}".format(file))
-                                try:
-                                    shutil.copy(file.as_posix(), (finalOutputPath / file.name).as_posix())
-                                except shutil.Error as e:
-                                    print('Could not copy file. Error: %s' % e)
-                                except OSError as e:
-                                    print('Could not copy file. Error: %s' % e)
+                if args.doGenerateMesh or args.doApplyTexture:
+                    Run_09_Meshing(fullOutputPath, binPath)
+                    Run_10_MeshFiltering(fullOutputPath, binPath)
+
+                    if args.doApplyTexture:
+                        Run_11_Texturing(fullOutputPath, binPath)
+
+                        if (fullOutputPath / DIR_TEXTURING).exists() and resultPath is not None:
+                            copy_files(fullOutputPath / DIR_TEXTURING, resultPath / DIR_TEXTURING)
