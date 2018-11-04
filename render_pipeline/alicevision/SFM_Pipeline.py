@@ -518,7 +518,7 @@ if __name__ == '__main__':
         print("{0} does not exist".format(binPath))
         sys.exit(1)
 
-    for path in sorted(imgPath.glob('**/')):
+    for path in sorted(imgPath.glob('**/br*')):
         if path.stem.lower() == 'recap':
             print("Skipping recap path: {0}".format(path))
             continue
